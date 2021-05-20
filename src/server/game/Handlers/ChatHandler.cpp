@@ -413,26 +413,25 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
 
 void WorldSession::HandleChatAddonMessageOpcode(WorldPackets::Chat::ChatAddonMessage& chatAddonMessage)
 {
-    HandleChatAddonMessage(chatAddonMessage.Params.Type, chatAddonMessage.Params.Prefix, chatAddonMessage.Params.Text);
+    HandleChatAddonMessage(chatAddonMessage.Params.Type, chatAddonMessage.Params.Prefix, chatAddonMessage.Params.Text, chatAddonMessage.Params.IsLogged);
 }
 
 void WorldSession::HandleChatAddonMessageTargetedOpcode(WorldPackets::Chat::ChatAddonMessageTargeted& chatAddonMessageTargeted)
 {
-    HandleChatAddonMessage(chatAddonMessageTargeted.Params.Type, chatAddonMessageTargeted.Params.Prefix, chatAddonMessageTargeted.Params.Text, chatAddonMessageTargeted.Target);
+    HandleChatAddonMessage(chatAddonMessageTargeted.Params.Type, chatAddonMessageTargeted.Params.Prefix, chatAddonMessageTargeted.Params.Text,
+        chatAddonMessageTargeted.Params.IsLogged, chatAddonMessageTargeted.Target);
 }
 
-void WorldSession::HandleChatAddonMessage(ChatMsg type, std::string prefix, std::string text, std::string target /*= ""*/)
+void WorldSession::HandleChatAddonMessage(ChatMsg type, std::string prefix, std::string text, bool isLogged, std::string target /*= ""*/)
 {
     Player* sender = GetPlayer();
-
     if (prefix.empty() || prefix.length() > 16)
         return;
-
     // Disabled addon channel?
     if (!sWorld->getBoolConfig(CONFIG_ADDON_CHANNEL))
         return;
-	
-	    if (prefix == AddonChannelCommandHandler::PREFIX && AddonChannelCommandHandler(this).ParseCommands(text.c_str()))
+
+    if (prefix == AddonChannelCommandHandler::PREFIX && AddonChannelCommandHandler(this).ParseCommands(text.c_str()))
         return;
 
     switch (type)
@@ -442,22 +441,19 @@ void WorldSession::HandleChatAddonMessage(ChatMsg type, std::string prefix, std:
         {
             if (sender->GetGuildId())
                 if (Guild* guild = sGuildMgr->GetGuildById(sender->GetGuildId()))
-                    guild->BroadcastAddonToGuild(this, type == CHAT_MSG_OFFICER, text, prefix);
+                    guild->BroadcastAddonToGuild(this, type == CHAT_MSG_OFFICER, text, prefix, isLogged);
             break;
         }
         case CHAT_MSG_WHISPER:
         {
             /// @todo implement cross realm whispers (someday)
             ExtendedPlayerName extName = ExtractExtendedPlayerName(target);
-
             if (!normalizePlayerName(extName.Name))
                 break;
-
             Player* receiver = ObjectAccessor::FindPlayerByName(extName.Name);
             if (!receiver)
                 break;
-
-            sender->WhisperAddon(text, prefix, receiver);
+            sender->WhisperAddon(text, prefix, isLogged, receiver);
             break;
         }
         // Messages sent to "RAID" while in a party will get delivered to "PARTY"
@@ -469,26 +465,23 @@ void WorldSession::HandleChatAddonMessage(ChatMsg type, std::string prefix, std:
             int32 subGroup = -1;
             if (type != CHAT_MSG_INSTANCE_CHAT)
                 group = sender->GetOriginalGroup();
-
             if (!group)
             {
                 group = sender->GetGroup();
                 if (!group)
                     break;
-
                 if (type == CHAT_MSG_PARTY)
                     subGroup = sender->GetSubGroup();
             }
-
             WorldPackets::Chat::Chat packet;
-            packet.Initialize(type, LANG_ADDON, sender, nullptr, text, 0, "", DEFAULT_LOCALE, prefix);
+            packet.Initialize(type, isLogged ? LANG_ADDON_LOGGED : LANG_ADDON, sender, nullptr, text, 0, "", DEFAULT_LOCALE, prefix);
             group->BroadcastAddonMessagePacket(packet.Write(), prefix, true, subGroup, sender->GetGUID());
             break;
         }
         case CHAT_MSG_CHANNEL:
         {
             if (Channel* chn = ChannelMgr::GetChannelForPlayerByNamePart(target, sender))
-                chn->AddonSay(sender->GetGUID(), prefix, text.c_str());
+                chn->AddonSay(sender->GetGUID(), prefix, text.c_str(), isLogged);
             break;
         }
         default:
@@ -498,6 +491,7 @@ void WorldSession::HandleChatAddonMessage(ChatMsg type, std::string prefix, std:
         }
     }
 }
+
 
 void WorldSession::HandleChatMessageAFKOpcode(WorldPackets::Chat::ChatMessageAFK& chatMessageAFK)
 {

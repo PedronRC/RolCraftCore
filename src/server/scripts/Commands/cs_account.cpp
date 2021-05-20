@@ -22,6 +22,7 @@ Comment: All account related commands
 Category: commandscripts
 EndScriptData */
 
+
 #include "AccountMgr.h"
 #include "Chat.h"
 #include "DatabaseEnv.h"

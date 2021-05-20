@@ -520,7 +520,7 @@ enum PlayerFieldKillsOffsets
 
 enum MirrorTimerType
 {
-    FATIGUE_TIMER      = 0,
+    FATIGUE_TIMER      = -1,
     BREATH_TIMER       = 1,
     FIRE_TIMER         = 2 // feign death
 };
@@ -1161,7 +1161,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         /// Handles whispers from Addons and players based on sender, receiver's guid and language.
         void Whisper(std::string const& text, Language language, Player* receiver, bool = false) override;
         void Whisper(uint32 textId, Player* target, bool isBossWhisper = false) override;
-        void WhisperAddon(std::string const& text, std::string const& prefix, Player* receiver);
+        void WhisperAddon(std::string const& text, std::string const& prefix, bool isLogged, Player* receiver);
 
         /*********************************************************/
         /***                    STORAGE SYSTEM                 ***/

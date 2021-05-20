@@ -38,7 +38,7 @@ void GOMove::SendAddonMessage(Player * player, const char * msg)
     if (!player || !msg)
         return;
 
-    player->WhisperAddon(msg, "GOMOVE", player);
+    player->WhisperAddon(msg, "GOMOVE", false, player);
 }
 
 GameObject * GOMove::GetGameObject(Player * player, ObjectGuid::LowType lowguid)
